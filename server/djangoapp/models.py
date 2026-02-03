@@ -1,25 +1,46 @@
-# Uncomment the following imports before adding the Model code
+from django.db import models
+from django.utils.timezone import now
+from django.core.validators import MaxValueValidator, MinValueValidator
+import datetime
 
-# from django.db import models
-# from django.utils.timezone import now
-# from django.core.validators import MaxValueValidator, MinValueValidator
-
+# Get current year
+def current_year():
+    return datetime.date.today().year
 
 # Create your models here.
 
-# <HINT> Create a Car Make model `class CarMake(models.Model)`:
-# - Name
-# - Description
-# - Any other fields you would like to include in car make model
-# - __str__ method to print a car make object
+# Car make model 
+class CarMake(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField()
 
+    def __str__(self):
+        return self.name  
 
-# <HINT> Create a Car Model model `class CarModel(models.Model):`:
-# - Many-To-One relationship to Car Make model (One Car Make has many
-# Car Models, using ForeignKey field)
-# - Name
-# - Type (CharField with a choices argument to provide limited choices
-# such as Sedan, SUV, WAGON, etc.)
-# - Year (IntegerField) with min value 2015 and max value 2023
-# - Any other fields you would like to include in car model
-# - __str__ method to print a car make object
+# Car Model model 
+class CarModel(models.Model):
+    car_make = models.ForeignKey(CarMake, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100)
+
+    CAR_TYPES = [
+        ('SEDAN', 'Sedan'),
+        ('SUV', 'SUV'),
+        ('WAGON', 'Wagon'),
+        ('PICKUP', 'Pickup'),
+        ('COUPE', 'Coupe'),
+        ('VAN','Van'),
+        ('MINIVAN', 'Minivan'),
+        ('CONVERTIBLE', 'Convertible'),
+        ('HATCHBACK', 'Hatchback')
+    ]
+    type = models.CharField(max_length=50, choices=CAR_TYPES, default='SUV')
+    
+    year = models.IntegerField(
+        default=current_year,
+        validators=[
+            MaxValueValidator(current_year),
+            MinValueValidator(2010),
+        ])
+
+    def __str__(self):
+        return self.name
