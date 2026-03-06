@@ -53,6 +53,7 @@ const PostReview = () => {
       headers: {
           "Content-Type": "application/json",
       },
+      credentials: "include",
       body: jsoninput,
   });
 
@@ -110,11 +111,11 @@ const PostReview = () => {
       </div >
 
       <div className='input_field'>
-      Car Year <input type="int" onChange={(e) => setYear(e.target.value)} max={2023} min={2015}/>
+      Car Year <input type="int" onChange={(e) => setYear(e.target.value)} max={2026} min={2015}/>
       </div>
 
       <div>
-      <button className='postreview' onClick={postreview}>Post Review</button>
+      <button className='postreview' onClick={(e) => postreview(e)} onTouchStart={(e) => postreview(e)}>Post Review</button>
       </div>
     </div>
     </div>
