@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import "./Login.css";
-import Header from '../Header/Header';
+import Header from "../Header/Header";
 
 const Login = ({ onClose }) => {
   const [userName, setUserName] = useState("");
@@ -18,17 +18,16 @@ const Login = ({ onClose }) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        "userName": userName,
-        "password": password
+        userName: userName,
+        password: password,
       }),
     });
 
     const json = await res.json();
     if (json.status != null && json.status === "Authenticated") {
-      sessionStorage.setItem('username', json.userName);
+      sessionStorage.setItem("username", json.userName);
       window.location.href = "/"; // Success redirect
-    }
-    else {
+    } else {
       alert("The user could not be authenticated.");
     }
   };
@@ -38,46 +37,50 @@ const Login = ({ onClose }) => {
       <Header />
       <div onClick={onClose}>
         <div
-          onClick={(e) => { e.stopPropagation(); }}
-          className='modalContainer'
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+          className="modalContainer"
         >
           <form className="login_panel" onSubmit={login}>
             {/* Added margin-bottom style for spacing between fields */}
             <div style={{ marginBottom: "15px" }}>
               <span className="input_field">Username </span>
-              <input 
-                type="text" 
-                name="username" 
-                placeholder="Username" 
-                className="input_field" 
-                onChange={(e) => setUserName(e.target.value)} 
+              <input
+                type="text"
+                name="username"
+                placeholder="Username"
+                className="input_field"
+                onChange={(e) => setUserName(e.target.value)}
               />
             </div>
 
             <div style={{ marginBottom: "15px" }}>
               <span className="input_field">Password </span>
-              <input 
-                name="psw" 
-                type="password" 
-                placeholder="Password" 
-                className="input_field" 
-                onChange={(e) => setPassword(e.target.value)} 
+              <input
+                name="psw"
+                type="password"
+                placeholder="Password"
+                className="input_field"
+                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
 
             {/* Buttons container: display flex ensures they stay side-by-side */}
             <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
               <input className="action_button" type="submit" value="Login" />
-              <input 
-                className="action_button" 
-                type="button" 
-                value="Cancel" 
-                onClick={() => window.location.href = "/"} 
+              <input
+                className="action_button"
+                type="button"
+                value="Cancel"
+                onClick={() => (window.location.href = "/")}
               />
             </div>
-            
+
             <div style={{ marginTop: "15px" }}>
-              <a className="loginlink" href="/register">Register Now</a>
+              <a className="loginlink" href="/register">
+                Register Now
+              </a>
             </div>
           </form>
         </div>
