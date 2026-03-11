@@ -1,11 +1,7 @@
-from django.contrib import admin
-from .models import CarMake, CarModel
-
 # Register your models here.
 
 from django.contrib import admin
 from .models import CarMake, CarModel
-
 
 # For the intergrated view on the carmake page
 class CarModelInline(admin.TabularInline):

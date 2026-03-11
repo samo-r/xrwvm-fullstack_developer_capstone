@@ -24,9 +24,10 @@ def get_request(endpoint, **kwargs):
         # Call get method of requests library with URL and parameters
         response = requests.get(request_url)
         return response.json()
-    except:
+    except Exception as err:
         # If any error occurs
         print("Network exception occurred")
+        print(err)
 
 
 # Function to handle sentiment analyzer API request
@@ -51,9 +52,9 @@ def get_dealer_reviews(request, dealer_id):
             response = analyze_review_sentiments(review_detail["review"])
             print(response)
             review_detail["sentiment"] = response["sentiment"]
-        return JsonResponse({"status": 200, "reviews": reviews})
+        return {"status": 200, "reviews": reviews}
     else:
-        return JsonResponse({"status": 400, "message": "Bad Request"})
+        return {"status": 400, "message": "Bad Request"}
 
 
 # Add review function
@@ -63,5 +64,6 @@ def post_review(data_dict):
         response = requests.post(request_url, json=data_dict)
         print(response.json())
         return response.json()
-    except:
+    except Exception as err:
         print("Network exception occurred")
+        print(err)
