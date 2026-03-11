@@ -1,3 +1,4 @@
+/* jshint esversion: 8, sub: true */
 const { Int32 } = require("mongodb");
 const mongoose = require("mongoose");
 

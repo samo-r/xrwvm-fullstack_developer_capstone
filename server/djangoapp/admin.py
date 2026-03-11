@@ -4,6 +4,7 @@ from django.contrib import admin
 from .models import CarMake, CarModel
 
 # For the intergrated view on the carmake page
+
 class CarModelInline(admin.TabularInline):
     model = CarModel
     extra = 1

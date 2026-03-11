@@ -9,6 +9,7 @@ def current_year():
 
 # Create your models here.
 
+
 # Car make model
 class CarMake(models.Model):
     name = models.CharField(max_length=100)
