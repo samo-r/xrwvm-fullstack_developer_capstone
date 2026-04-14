@@ -127,3 +127,16 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Node and frontend artifacts
+node_modules/
+
+# Local virtualenvs created for isolated Python environments
+trial-env/
+
+# Ignore any env files
+*.env
+
+# OS files
+Thumbs.db
+.DS_Store
