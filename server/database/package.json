@@ -4,12 +4,20 @@
   "description": "",
   "main": "app.js",
   "scripts": {
+    "start": "node app.js",
+    "dev": "node --watch app.js",
+    "compose:up": "docker compose up -d --build",
+    "compose:down": "docker compose down",
+    "compose:logs": "docker compose logs -f api mongo_db",
+    "smoke:health": "node -e \"require('http').get('http://127.0.0.1:3030/health', (res) => { console.log('health status:', res.statusCode); process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', (err) => { console.error(err.message); process.exit(1); });\"",
+    "smoke:test": "node smoke-test.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^17.3.1",
     "express": "^4.18.2",
     "mongodb": "^6.3.0",
     "mongoose": "^8.0.1"
