@@ -12,37 +12,95 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 
 import os
 from pathlib import Path
+from urllib.parse import urlparse
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(os.path.join(BASE_DIR, ".env"))
+
+FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
+FRONTEND_BUILD_DIR = os.path.join(FRONTEND_DIR, "build")
+FRONTEND_STATIC_DIR = os.path.join(FRONTEND_DIR, "static")
+FRONTEND_BUILD_STATIC_DIR = os.path.join(FRONTEND_BUILD_DIR, "static")
+
+
+def env_bool(name, default=False):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def env_list(name, default=None):
+    value = os.getenv(name)
+    if value is None:
+        return default or []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def normalize_allowed_hosts(hosts):
+    normalized = []
+    for item in hosts:
+        candidate = item.strip()
+        if not candidate:
+            continue
+
+        if candidate == "*":
+            normalized.append(candidate)
+            continue
+
+        parsed = urlparse(candidate if "://" in candidate else f"//{candidate}")
+        host = parsed.hostname or candidate
+        if host:
+            normalized.append(host)
+
+    return list(dict.fromkeys(normalized))
+
+
+def normalize_csrf_trusted_origins(origins):
+    normalized = []
+    for item in origins:
+        candidate = item.strip()
+        if not candidate:
+            continue
+
+        if "://" not in candidate:
+            if candidate.startswith("localhost") or candidate.startswith("127.0.0.1"):
+                candidate = f"http://{candidate}"
+            else:
+                candidate = f"https://{candidate}"
+
+        parsed = urlparse(candidate)
+        if parsed.scheme and parsed.netloc:
+            normalized.append(f"{parsed.scheme}://{parsed.netloc}")
+
+    return list(dict.fromkeys(normalized))
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = (
-    "django-insecure-ccow$tz_=9%dxu4(0%^(z%nx32#s@(zt9$ih@)5l54yny)"
-    "wm-0"
+SECRET_KEY = os.getenv(
+    "DJANGO_SECRET_KEY",
+    "django-insecure-dev-only-key-change-me",
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env_bool("DJANGO_DEBUG", default=True)
+ENVIRONMENT = os.getenv("DJANGO_ENV", "local").strip().lower()
+IS_PRODUCTION = ENVIRONMENT in {"prod", "production"}
 
-ALLOWED_HOSTS = [
-    "localhost",
-    (
-        "https://mukisasamuel-8000.theianext-1-labs-prod-misc-tools-us-east-0"
-        ".proxy.cognitiveclass.ai/"
-    ),
-]
-CSRF_TRUSTED_ORIGINS = [
-    "https://*.cognitiveclass.ai",
-    (
-        "https://mukisasamuel-8000.theianext-1-labs-prod-misc-tools-us-east-0"
-        ".proxy.cognitiveclass.ai/"
-    ),
-]
+ALLOWED_HOSTS = normalize_allowed_hosts(
+    env_list("DJANGO_ALLOWED_HOSTS", ["localhost", "127.0.0.1"])
+)
+CSRF_TRUSTED_ORIGINS = normalize_csrf_trusted_origins(
+    env_list(
+        "DJANGO_CSRF_TRUSTED_ORIGINS",
+        ["http://localhost:8000", "http://127.0.0.1:8000"],
+    )
+)
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [],
@@ -75,9 +133,8 @@ TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [
-            os.path.join(BASE_DIR, "frontend/static"),
-            os.path.join(BASE_DIR, "frontend/build"),
-            os.path.join(BASE_DIR, "frontend/build/static"),
+            FRONTEND_STATIC_DIR,
+            FRONTEND_BUILD_DIR,
         ],
         "APP_DIRS": True,
         "OPTIONS": {
@@ -160,17 +217,38 @@ MEDIA_URL = "/media/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "frontend/static"),
-    os.path.join(BASE_DIR, "frontend/build"),
-    os.path.join(BASE_DIR, "frontend/build/static"),
+    FRONTEND_STATIC_DIR,
+    FRONTEND_BUILD_STATIC_DIR,
 ]
 
 # This section fixes the proxy issue in the browser
 # Tells Django the proxy is secure
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+if env_bool("DJANGO_USE_SECURE_PROXY_SSL_HEADER", default=IS_PRODUCTION):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-# Allows cookies to work across the proxy domain
-CSRF_COOKIE_SAMESITE = "None"
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SAMESITE = "None"
-SESSION_COOKIE_SECURE = True
+SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", default=IS_PRODUCTION)
+
+# Allows cookies to work across environments.
+# Local HTTP: Lax + non-secure for easy login/session.
+# Production HTTPS: None + secure for cross-site proxy/front-end usage.
+csrf_samesite = os.getenv(
+    "DJANGO_CSRF_COOKIE_SAMESITE",
+    "None" if IS_PRODUCTION else "Lax",
+).strip()
+session_samesite = os.getenv(
+    "DJANGO_SESSION_COOKIE_SAMESITE",
+    "None" if IS_PRODUCTION else "Lax",
+).strip()
+
+CSRF_COOKIE_SAMESITE = csrf_samesite
+SESSION_COOKIE_SAMESITE = session_samesite
+
+CSRF_COOKIE_SECURE = env_bool("DJANGO_CSRF_COOKIE_SECURE", default=IS_PRODUCTION)
+SESSION_COOKIE_SECURE = env_bool("DJANGO_SESSION_COOKIE_SECURE", default=IS_PRODUCTION)
+
+# Browser rule: SameSite=None cookies must also be Secure.
+if CSRF_COOKIE_SAMESITE == "None":
+    CSRF_COOKIE_SECURE = True
+
+if SESSION_COOKIE_SAMESITE == "None":
+    SESSION_COOKIE_SECURE = True

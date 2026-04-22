@@ -1,5 +1,6 @@
-requests
-Django
-Pillow
-gunicorn
-python-dotenv
+# Django API dependencies
+Django==6.0.4
+setuptools>=65,<70
+requests>=2.31,<3
+python-dotenv>=1,<2 
+gunicorn>=21,<24

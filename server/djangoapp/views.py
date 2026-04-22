@@ -10,6 +10,14 @@ from .restapis import get_request, analyze_review_sentiments, post_review
 from .populate import initiate
 
 
+def is_upstream_error(payload):
+    return (
+        isinstance(payload, dict)
+        and payload.get("ok") is False
+        and "error" in payload
+    )
+
+
 # Get Cars list
 def get_cars(request):
     count = CarMake.objects.filter().count()
@@ -102,6 +110,8 @@ def get_dealerships(request, state="All"):
     else:
         endpoint = "/fetchDealers/" + state
     dealerships = get_request(endpoint)
+    if is_upstream_error(dealerships):
+        return JsonResponse(dealerships, status=dealerships.get("status", 502))
     return JsonResponse({"status": 200, "dealers": dealerships})
 
 
@@ -110,6 +120,8 @@ def get_dealer_details(request, dealer_id):
     if dealer_id:
         endpoint = "/fetchDealer/" + str(dealer_id)
         dealership = get_request(endpoint)
+        if is_upstream_error(dealership):
+            return JsonResponse(dealership, status=dealership.get("status", 502))
         return JsonResponse({"status": 200, "dealer": dealership})
     else:
         return JsonResponse({"status": 400, "message": "Bad Request"})
@@ -121,10 +133,15 @@ def get_dealer_reviews(request, dealer_id):
     if dealer_id:
         endpoint = "/fetchReviews/dealer/" + str(dealer_id)
         reviews = get_request(endpoint)
+        if is_upstream_error(reviews):
+            return JsonResponse(reviews, status=reviews.get("status", 502))
         for review_detail in reviews:
             response = analyze_review_sentiments(review_detail["review"])
-            print(response)
-            review_detail["sentiment"] = response["sentiment"]
+            if is_upstream_error(response):
+                review_detail["sentiment"] = "neutral"
+                review_detail["sentiment_error"] = True
+            else:
+                review_detail["sentiment"] = response.get("sentiment", "neutral")
         return JsonResponse({"status": 200, "reviews": reviews})
     else:
         return JsonResponse({"status": 400, "message": "Bad Request"})
@@ -135,12 +152,9 @@ def get_dealer_reviews(request, dealer_id):
 def add_review(request):
     if not request.user.is_anonymous:
         data = json.loads(request.body)
-        try:
-            post_review(data)
-            return JsonResponse({"status": 200})
-        except Exception:
-            return JsonResponse(
-                {"status": 401, "message": "Error in posting review"}
-            )
+        response = post_review(data)
+        if is_upstream_error(response):
+            return JsonResponse(response, status=response.get("status", 502))
+        return JsonResponse({"status": 200})
     else:
         return JsonResponse({"status": 403, "message": "Unauthorized"})

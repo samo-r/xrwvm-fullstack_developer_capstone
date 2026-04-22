@@ -2,68 +2,145 @@ import requests
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 
-backend_url = os.getenv("backend_url", default="http://localhost:3030")
-sentiment_analyzer_url = os.getenv(
-    "sentiment_analyzer_url", default="http://localhost:5050/"
-)
+
+def require_env(name):
+    value = os.getenv(name)
+    if not value or str(value).strip() == "":
+        raise RuntimeError(f"Missing required environment variable: {name}")
+    return value.strip()
+
+
+backend_url = require_env("backend_url").rstrip("/")
+sentiment_analyzer_url = require_env("sentiment_analyzer_url").rstrip("/")
+
+# Maximum seconds to wait for any upstream service before giving up.
+# Prevents Django threads from hanging when the DB or sentiment service is slow.
+REQUEST_TIMEOUT = 10
+
+
+def service_error(service, message, status=502, details=None):
+    return {
+        "ok": False,
+        "status": status,
+        "error": {
+            "service": service,
+            "message": message,
+            "details": details,
+        },
+    }
+
+
+def extract_response_details(response):
+    if response is None:
+        return None
+
+    try:
+        return response.json()
+    except ValueError:
+        return response.text
 
 
 # Function to handle fetchReview and fetchDealers API requests
 def get_request(endpoint, **kwargs):
-    params = ""
-    if kwargs:
-        for key, value in kwargs.items():
-            params = params + key + "=" + value + "&"
+    request_url = backend_url + endpoint
 
-    request_url = backend_url + endpoint + "?" + params
-
-    print("GET from {} ".format(request_url))
+    print("GET from {} with params {}".format(request_url, kwargs or {}))
     try:
         # Call get method of requests library with URL and parameters
-        response = requests.get(request_url)
+        response = requests.get(
+            request_url,
+            params=kwargs if kwargs else None,
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
         return response.json()
-    except Exception as err:
-        # If any error occurs
-        print("Network exception occurred")
-        print(err)
+    except requests.exceptions.HTTPError as err:
+        status = err.response.status_code if err.response is not None else 502
+        return service_error(
+            "database-api",
+            "Backend API returned an error response.",
+            status=status,
+            details=extract_response_details(err.response),
+        )
+    except requests.exceptions.Timeout as err:
+        return service_error(
+            "database-api",
+            "Request to backend API timed out.",
+            status=504,
+            details=str(err),
+        )
+    except requests.exceptions.RequestException as err:
+        # If any network/connection error occurs
+        return service_error(
+            "database-api",
+            "Request to backend API failed.",
+            status=502,
+            details=str(err),
+        )
 
 
 # Function to handle sentiment analyzer API request
 def analyze_review_sentiments(text):
-    request_url = sentiment_analyzer_url + "analyze/" + text
+    request_url = sentiment_analyzer_url + "/analyze/" + text
     try:
         # Call get method of requests library with URL and parameters
-        response = requests.get(request_url)
+        response = requests.get(request_url, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
         return response.json()
-    except Exception as err:
-        print(f"Unexpected {err=}, {type(err)=}")
-        print("Network exception occurred")
-
-
-# Get reviews and sentiment view for dealers
-def get_dealer_reviews(request, dealer_id):
-    # if dealer id has been provided
-    if dealer_id:
-        endpoint = "/fetchReviews/dealer/" + str(dealer_id)
-        reviews = get_request(endpoint)
-        for review_detail in reviews:
-            response = analyze_review_sentiments(review_detail["review"])
-            print(response)
-            review_detail["sentiment"] = response["sentiment"]
-        return {"status": 200, "reviews": reviews}
-    else:
-        return {"status": 400, "message": "Bad Request"}
+    except requests.exceptions.HTTPError as err:
+        status = err.response.status_code if err.response is not None else 502
+        return service_error(
+            "sentiment-analyzer",
+            "Sentiment analyzer returned an error response.",
+            status=status,
+            details=extract_response_details(err.response),
+        )
+    except requests.exceptions.Timeout as err:
+        return service_error(
+            "sentiment-analyzer",
+            "Sentiment analyzer request timed out.",
+            status=504,
+            details=str(err),
+        )
+    except requests.exceptions.RequestException as err:
+        return service_error(
+            "sentiment-analyzer",
+            "Sentiment analyzer request failed.",
+            status=502,
+            details=str(err),
+        )
 
 
 # Add review function
 def post_review(data_dict):
     request_url = backend_url + "/insert_review"
     try:
-        response = requests.post(request_url, json=data_dict)
+        response = requests.post(request_url, json=data_dict, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
         print(response.json())
         return response.json()
-    except Exception as err:
-        print("Network exception occurred")
-        print(err)
+    except requests.exceptions.HTTPError as err:
+        status = err.response.status_code if err.response is not None else 502
+        return service_error(
+            "database-api",
+            "Backend API returned an error response while posting review.",
+            status=status,
+            details=extract_response_details(err.response),
+        )
+    except requests.exceptions.Timeout as err:
+        return service_error(
+            "database-api",
+            "Review submission timed out.",
+            status=504,
+            details=str(err),
+        )
+    except requests.exceptions.RequestException as err:
+        return service_error(
+            "database-api",
+            "Review submission failed.",
+            status=502,
+            details=str(err),
+        )
