@@ -114,6 +114,38 @@ def analyze_review_sentiments(text):
         )
 
 
+# Function to handle PUT requests to the database API
+def put_request(endpoint, data_dict):
+    request_url = backend_url + endpoint
+    print("PUT to {} with body {}".format(request_url, data_dict))
+    try:
+        response = requests.put(request_url, json=data_dict, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.HTTPError as err:
+        status = err.response.status_code if err.response is not None else 502
+        return service_error(
+            "database-api",
+            "Backend API returned an error response.",
+            status=status,
+            details=extract_response_details(err.response),
+        )
+    except requests.exceptions.Timeout as err:
+        return service_error(
+            "database-api",
+            "Request to backend API timed out.",
+            status=504,
+            details=str(err),
+        )
+    except requests.exceptions.RequestException as err:
+        return service_error(
+            "database-api",
+            "Request to backend API failed.",
+            status=502,
+            details=str(err),
+        )
+
+
 # Add review function
 def post_review(data_dict):
     request_url = backend_url + "/insert_review"
@@ -141,6 +173,38 @@ def post_review(data_dict):
         return service_error(
             "database-api",
             "Review submission failed.",
+            status=502,
+            details=str(err),
+        )
+
+
+# Function to handle DELETE requests to the database API
+def delete_request(endpoint):
+    request_url = backend_url + endpoint
+    print("DELETE to {}".format(request_url))
+    try:
+        response = requests.delete(request_url, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.HTTPError as err:
+        status = err.response.status_code if err.response is not None else 502
+        return service_error(
+            "database-api",
+            "Backend API returned an error response.",
+            status=status,
+            details=extract_response_details(err.response),
+        )
+    except requests.exceptions.Timeout as err:
+        return service_error(
+            "database-api",
+            "Request to backend API timed out.",
+            status=504,
+            details=str(err),
+        )
+    except requests.exceptions.RequestException as err:
+        return service_error(
+            "database-api",
+            "Request to backend API failed.",
             status=502,
             details=str(err),
         )

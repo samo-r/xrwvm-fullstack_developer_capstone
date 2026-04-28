@@ -380,6 +380,57 @@ app.get("/fetchDealer/:id", async (req, res) => {
   }
 });
 
+// Express route to update a dealership by id
+app.put("/updateDealer/:id", async (req, res) => {
+  const dealerId = Number(req.params.id);
+  if (!Number.isInteger(dealerId) || dealerId <= 0) {
+    return sendError(
+      res,
+      400,
+      "INVALID_DEALER_ID",
+      "Dealer id must be a valid ID.",
+    );
+  }
+
+  const allowedFields = [
+    "city", "state", "address", "zip", "lat", "long", "short_name", "full_name",
+  ];
+  const updates = {};
+  for (const field of allowedFields) {
+    if (req.body[field] !== undefined) {
+      updates[field] = req.body[field];
+    }
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return sendError(
+      res,
+      400,
+      "NO_UPDATE_FIELDS",
+      "At least one updatable field must be provided.",
+    );
+  }
+
+  try {
+    const updated = await Dealerships.findOneAndUpdate(
+      { id: dealerId },
+      { $set: updates },
+      { new: true, runValidators: true },
+    );
+    if (!updated) {
+      return sendError(res, 404, "DEALER_NOT_FOUND", "Dealer not found.");
+    }
+    return res.json(updated);
+  } catch (error) {
+    return sendError(
+      res,
+      500,
+      "UPDATE_DEALER_FAILED",
+      "Failed to update dealer.",
+    );
+  }
+});
+
 //Express route to insert review
 app.post("/insert_review", async (req, res) => {
   const validation = validateReviewPayload(req.body);
@@ -436,6 +487,76 @@ app.post("/insert_review", async (req, res) => {
       "INSERT_REVIEW_FAILED",
       "Failed to insert review.",
     );
+  }
+});
+
+// Express route to fetch a single review by id
+app.get("/fetchReview/:id", async (req, res) => {
+  const reviewId = Number(req.params.id);
+  if (!Number.isInteger(reviewId) || reviewId <= 0) {
+    return sendError(res, 400, "INVALID_REVIEW_ID", "Review id must be a positive integer.");
+  }
+
+  try {
+    const document = await Reviews.findOne({ id: reviewId });
+    if (!document) {
+      return sendError(res, 404, "REVIEW_NOT_FOUND", "Review not found.");
+    }
+    return res.json(document);
+  } catch (error) {
+    return sendError(res, 500, "FETCH_REVIEW_FAILED", "Failed to fetch review.");
+  }
+});
+
+// Express route to update a review by id
+app.put("/updateReview/:id", async (req, res) => {
+  const reviewId = Number(req.params.id);
+  if (!Number.isInteger(reviewId) || reviewId <= 0) {
+    return sendError(res, 400, "INVALID_REVIEW_ID", "Review id must be a positive integer.");
+  }
+
+  const allowedFields = ["review", "purchase", "purchase_date", "car_make", "car_model", "car_year"];
+  const updates = {};
+  for (const field of allowedFields) {
+    if (req.body[field] !== undefined) {
+      updates[field] = req.body[field];
+    }
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return sendError(res, 400, "NO_UPDATE_FIELDS", "At least one updatable field must be provided.");
+  }
+
+  try {
+    const updated = await Reviews.findOneAndUpdate(
+      { id: reviewId },
+      { $set: updates },
+      { new: true, runValidators: true },
+    );
+    if (!updated) {
+      return sendError(res, 404, "REVIEW_NOT_FOUND", "Review not found.");
+    }
+    return res.json(updated);
+  } catch (error) {
+    return sendError(res, 500, "UPDATE_REVIEW_FAILED", "Failed to update review.");
+  }
+});
+
+// Express route to delete a review by id
+app.delete("/deleteReview/:id", async (req, res) => {
+  const reviewId = Number(req.params.id);
+  if (!Number.isInteger(reviewId) || reviewId <= 0) {
+    return sendError(res, 400, "INVALID_REVIEW_ID", "Review id must be a positive integer.");
+  }
+
+  try {
+    const deleted = await Reviews.findOneAndDelete({ id: reviewId });
+    if (!deleted) {
+      return sendError(res, 404, "REVIEW_NOT_FOUND", "Review not found.");
+    }
+    return res.json({ message: "Review deleted." });
+  } catch (error) {
+    return sendError(res, 500, "DELETE_REVIEW_FAILED", "Failed to delete review.");
   }
 });
 

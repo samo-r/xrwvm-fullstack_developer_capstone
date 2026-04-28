@@ -1,6 +1,7 @@
 # Django API dependencies
-Django==6.0.4
+Django==4.2.24
 setuptools>=65,<70
+PyJWT>=2.8,<3
 requests>=2.31,<3
 python-dotenv>=1,<2 
 gunicorn>=21,<24

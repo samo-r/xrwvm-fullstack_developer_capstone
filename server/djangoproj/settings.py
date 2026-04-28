@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 from dotenv import load_dotenv
@@ -160,6 +161,16 @@ DATABASES = {
         "NAME": BASE_DIR / "db.sqlite3",
     }
 }
+
+AUTH_USER_MODEL = "djangoapp.User"
+
+JWT_ALGORITHM = os.getenv("DJANGO_JWT_ALGORITHM", "HS256").strip()
+JWT_ACCESS_TTL_MINUTES = int(os.getenv("DJANGO_JWT_ACCESS_TTL_MINUTES", "30"))
+JWT_REFRESH_TTL_DAYS = int(os.getenv("DJANGO_JWT_REFRESH_TTL_DAYS", "7"))
+JWT_SIGNING_KEY = os.getenv("DJANGO_JWT_SECRET_KEY", SECRET_KEY)
+
+JWT_ACCESS_TTL = timedelta(minutes=JWT_ACCESS_TTL_MINUTES)
+JWT_REFRESH_TTL = timedelta(days=JWT_REFRESH_TTL_DAYS)
 
 AUTH_PASSWORD_VALIDATORS = [
     {

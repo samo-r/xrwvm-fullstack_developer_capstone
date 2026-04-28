@@ -40,6 +40,14 @@ const reviews = new Schema({
     type: Number,
     required: true,
   },
+  author_id: {
+    type: Number,
+    default: null,
+  },
+  author_username: {
+    type: String,
+    default: null,
+  },
 });
 
 module.exports = mongoose.model("reviews", reviews);
